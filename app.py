@@ -77,7 +77,6 @@ async def result(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rollcode = args[0]
         rollno = int(args[1])
         count = int(args[2]) if len(args) > 2 else 1
-        count = min(count, 20)
 
         await update.message.reply_text("Fetching results...")
 
