@@ -42,8 +42,10 @@ def fetch_result(session, token, rollcode, rollno):
     soup = BeautifulSoup(res.text, "html.parser")
 
     data = {
-        "name": "", "father": "", "roll_no": rollno,
-        "school": "", "total": "", "subjects": {}
+        "name": "",
+        "roll_no": rollno,
+        "total": "",
+        "subjects": {}
     }
 
     for row in soup.find_all("tr"):
@@ -54,8 +56,6 @@ def fetch_result(session, token, rollcode, rollno):
         val = cols[-1]
 
         if "student" in key: data["name"] = val
-        elif "father" in key: data["father"] = val
-        elif "school" in key: data["school"] = val
         elif "aggregate" in key: data["total"] = val
         elif len(cols) >= 5:
             sub = normalize_subject(cols[0])
