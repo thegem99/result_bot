@@ -125,7 +125,7 @@ async def result(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Error: {e}")
 
 # ===== MAIN =====
-app = ApplicationBuilder().token("8623695113:AAF3VAXr4mbmoWGYjbCHJ_eTrnVHyDwfsP4").build()
+app = ApplicationBuilder().token("8611852094:AAEg3BBP1_yLoNIZ1Okt-8EkvMYqSqdeTow").build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("result", result))
