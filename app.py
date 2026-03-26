@@ -68,7 +68,7 @@ def fetch_result(session, token, rollcode, rollno):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Send:\n/result <rollcode> <rollno> [count]\n\nExample:\n/result 12345 67890 5"
+        "Send:\n/result <rollcode> <rollno> [count]\n\nExample:\n/result 31082 26010001 5"
     )
 
 async def result(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -88,7 +88,7 @@ async def result(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return fetch_result(session, token, rollcode, str(rn))
 
         results = []
-        with ThreadPoolExecutor(max_workers=5) as ex:
+        with ThreadPoolExecutor(max_workers=min(count,100)) as ex:
             futures = [ex.submit(fetch, rollno+i) for i in range(count)]
             for f in as_completed(futures):
                 results.append(f.result())
