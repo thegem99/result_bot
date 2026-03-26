@@ -1,6 +1,7 @@
 python-telegram-bot==20.7
 requests==2.31.0
-beautifulsoup4==4.12.3
-reportlab==4.0.8
-lxml==5.1.0
 urllib3==1.26.18
+charset-normalizer==3.3.2
+beautifulsoup4==4.12.3
+lxml==5.1.0
+reportlab==4.0.8
