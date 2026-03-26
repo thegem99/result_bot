@@ -6,8 +6,6 @@ from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import math
-import asyncio
 
 BASE_URL = "https://www.bsebexam.com"
 
@@ -22,7 +20,14 @@ def get_token(session):
     return token.get("value") if token else None
 
 def normalize_subject(name):
-    return name.strip().lower() if name else None
+    name = name.lower()
+    if "math" in name: return "Mathematics"
+    if "bio" in name: return "Biology"
+    if "physic" in name: return "Physics"
+    if "chem" in name: return "Chemistry"
+    if "english" in name: return "English"
+    if "hindi" in name: return "Hindi"
+    return name.title()
 
 def fetch_result(session, token, rollcode, rollno):
     url = BASE_URL + "/Result/GetResult"
@@ -61,7 +66,7 @@ def fetch_result(session, token, rollcode, rollno):
 # ===== COMMANDS =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Send:\n/result <rollcode> <rollno> [count]\n\nExample:\n/result 31082 26010001 100"
+        "Send:\n/result <rollcode> <rollno> [count]\n\nExample:\n/result 31082 26010001 5"
     )
 
 async def result(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -71,7 +76,7 @@ async def result(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rollno = int(args[1])
         count = int(args[2]) if len(args) > 2 else 1
 
-        await update.message.reply_text(f"Fetching {count} results. This may take a while...")
+        await update.message.reply_text("Fetching results...")
 
         session = get_session()
 
@@ -80,62 +85,54 @@ async def result(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return fetch_result(session, token, rollcode, str(rn))
 
         results = []
-        batch_size = 20  # adjust for safety
-        total_batches = math.ceil(count / batch_size)
-
-        for b in range(total_batches):
-            start_roll = rollno + b*batch_size
-            end_roll = min(rollno + count, start_roll + batch_size)
-            # Number of threads = min(count in this batch, 100)
-            threads = min(end_roll - start_roll, 100)
-            with ThreadPoolExecutor(max_workers=threads) as ex:
-                futures = [ex.submit(fetch, r) for r in range(start_roll, end_roll)]
-                for f in as_completed(futures):
-                    results.append(f.result())
-            await asyncio.sleep(0.5)
+        with ThreadPoolExecutor(max_workers=min(count,100)) as ex:
+            futures = [ex.submit(fetch, rollno+i) for i in range(count)]
+            for f in as_completed(futures):
+                results.append(f.result())
 
         results.sort(key=lambda x: int(x["roll_no"]))
 
-        # ===== TEXT RESPONSE =====
+        # ===== TEXT OUTPUT =====
         msg = ""
         for r in results:
-            msg += f"🎓 {r['name']}\nRoll: {r['roll_no']}\nTotal: {r['total']}\n"
-            if r['subjects']:
-                for sub, marks in r['subjects'].items():
-                    msg += f"{sub.capitalize()}: {marks}  "
-            msg += "\n\n"
+            msg += f"🎓 {r['name']} (Roll: {r['roll_no']})\n"
+            for sub, mark in r["subjects"].items():
+                msg += f"   {sub:<12}: {mark}\n"
+            msg += f"   {'Total':<12}: {r['total']}\n\n"
 
-            if len(msg) > 3500:
-                await update.message.reply_text(msg)
-                msg = ""
-        if msg:
-            await update.message.reply_text(msg)
+        await update.message.reply_text(msg[:4000])
 
-        # ===== PDF RESPONSE =====
+        # ===== PDF OUTPUT =====
         buffer = BytesIO()
         p = canvas.Canvas(buffer, pagesize=letter)
-        y = 750
+        width, height = letter
+        y = height - 40
+
         for r in results:
-            p.drawString(40, y, f"{r['roll_no']} | {r['name']} | {r['total']}")
-            y -= 20
-            for sub, marks in r['subjects'].items():
-                p.drawString(60, y, f"{sub.capitalize()}: {marks}")
-                y -= 15
+            p.setFont("Helvetica-Bold", 10)
+            p.drawString(40, y, f"{r['roll_no']} | {r['name']} | Total: {r['total']}")
+            y -= 15
+            p.setFont("Helvetica", 9)
+            for sub, mark in r["subjects"].items():
+                p.drawString(60, y, f"{sub:<12}: {mark}")
+                y -= 12
             y -= 10
             if y < 50:
                 p.showPage()
-                y = 750
+                y = height - 40
+
         p.save()
         buffer.seek(0)
 
-        await update.message.reply_document(InputFile(buffer, filename="results.pdf"))
+        await update.message.reply_document(
+            document=InputFile(buffer, filename="results.pdf")
+        )
 
     except Exception as e:
         await update.message.reply_text(f"Error: {e}")
 
 # ===== MAIN =====
-BOT_TOKEN = "8611852094:AAEg3BBP1_yLoNIZ1Okt-8EkvMYqSqdeTow"
-app = ApplicationBuilder().token(BOT_TOKEN).build()
+app = ApplicationBuilder().token("8611852094:AAEg3BBP1_yLoNIZ1Okt-8EkvMYqSqdeTow").build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("result", result))
 app.run_polling()
